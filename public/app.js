@@ -1,4 +1,4 @@
-const state = { data: null, posterKinds: [], activePoster: null };
+const state = { data: null };
 
 function el(id) { return document.getElementById(id); }
 
@@ -7,6 +7,31 @@ function fmtDateTime(v) {
   const d = new Date(v);
   if (Number.isNaN(d.getTime())) return String(v);
   return d.toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", hour12: false });
+}
+
+const CARD_KEYS = ["胜券在握", "一发入魂", "时来运转"];
+const SUMMARY_LABELS = {
+  hitRate: "命中率%", pnl: "累计盈亏", roi: "ROI%", nextStake: "下一期投入",
+  totalStake: "累计投入", totalReturn: "累计返还", maxDrawdown: "最大回撤",
+  settled: "已结算", pending: "待结算", tracked: "追踪场次", trackedDays: "追踪天数",
+  currentSellingCount: "在售场次", saleDayCount: "销售日第", endingBankroll: "当前本金",
+  maxSingleStake: "最大单注", maxLosingStreak: "最长连黑", goalHitRate: "进球命中%",
+  top1HitRate: "Top1命中%", top3HitRate: "Top3命中%", observedDays: "观察天数",
+  hits: "命中", misses: "未中",
+};
+
+function statGrid(summary) {
+  if (!summary) return "";
+  const items = Object.entries(summary)
+    .filter(([, v]) => v !== "" && v != null)
+    .slice(0, 12)
+    .map(([k, v]) => {
+      const label = SUMMARY_LABELS[k] || k;
+      const num = Number(v);
+      const cls = Number.isFinite(num) ? (num < 0 ? "down" : num > 0 ? "up" : "") : "";
+      return `<div class="stat"><div class="k">${label}</div><div class="v ${cls}">${v}</div></div>`;
+    });
+  return `<div class="ledger-grid">${items.join("")}</div>`;
 }
 
 async function loadToday() {
@@ -20,8 +45,7 @@ async function loadToday() {
     }
     state.data = json;
     el("syncInfo").textContent = `数据日期 ${json.businessDate} · 同步于 ${fmtDateTime(json.updatedAt)}`;
-    renderMatches(json.payload);
-    renderLedger(json.payload);
+    renderCards(json.payload);
     renderPosters(json);
   } catch (err) {
     el("syncInfo").textContent = "数据加载失败";
@@ -30,72 +54,43 @@ async function loadToday() {
   }
 }
 
-function firstText(v) {
-  if (v == null) return "";
-  if (typeof v === "string" || typeof v === "number") return String(v);
-  if (Array.isArray(v)) return v.map(firstText).filter(Boolean).join(" / ");
-  if (typeof v === "object") return v.label || v.text || v.name || v.title || "";
-  return "";
-}
-
-function renderMatches(payload) {
+function renderCards(payload) {
   const list = el("todayList");
   list.innerHTML = "";
-  const matches = Array.isArray(payload?.matches) ? payload.matches : [];
-  if (!matches.length) {
+  const cards = payload?.cards || {};
+  const keys = Object.keys(cards).filter((k) => cards[k]);
+  const ordered = [...CARD_KEYS.filter((k) => keys.includes(k)), ...keys.filter((k) => !CARD_KEYS.includes(k))];
+  if (!ordered.length) {
     el("todayEmpty").classList.remove("hidden");
     return;
   }
   el("todayEmpty").classList.add("hidden");
-  for (const m of matches) {
-    const card = document.createElement("div");
-    card.className = "match-card";
-    const teams = `${firstText(m.home) || "?"} vs ${firstText(m.away) || "?"}`;
-    const rec = firstText(m.recommendation) || firstText(m.pick) || firstText(m.plan);
-    const odds = firstText(m.odds);
-    card.innerHTML = `
+  for (const key of ordered) {
+    const card = cards[key];
+    const box = document.createElement("div");
+    box.className = "match-card";
+    const current = card.current
+      ? `<div class="match-rec">当前主推：<span class="rec-tag"></span></div>`
+      : "";
+    box.innerHTML = `
       <div class="match-head">
-        <span class="match-no">${firstText(m.matchNo) || ""}</span>
-        <span class="match-league">${firstText(m.league) || ""}</span>
-        <span class="match-kick">${firstText(m.kickoff) || firstText(m.kickoffTime) || ""}</span>
+        <span class="match-no">${key}</span>
+        <span class="match-league"></span>
       </div>
-      <div class="match-teams"></div>
-      ${rec ? `<div class="match-rec">方案：<span class="rec-tag"></span></div>` : ""}
-      ${odds ? `<div class="match-odds"></div>` : ""}
+      ${current}
+      ${statGrid(card.summary)}
     `;
-    card.querySelector(".match-teams").textContent = teams;
-    if (rec) card.querySelector(".rec-tag").textContent = rec;
-    if (odds) card.querySelector(".match-odds").textContent = odds;
-    list.appendChild(card);
+    box.querySelector(".match-league").textContent = card.title || "";
+    if (card.current) {
+      const cur = card.current;
+      box.querySelector(".rec-tag").textContent = `${cur.matchNo || ""} ${cur.match || ""} ${cur.selectedGoals ? "· " + cur.selectedGoals + "球" : ""} ${cur.selectedScores ? "· " + cur.selectedScores : ""}`.trim();
+    }
+    list.appendChild(box);
   }
-}
-
-function statRow(label, value, cls) {
-  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-  return `<div class="stat"><div class="k">${esc(label)}</div><div class="v ${cls || ""}">${esc(value)}</div></div>`;
-}
-
-function renderLedger(payload) {
-  const box = el("ledgerBox");
-  const ledger = payload?.ledger;
-  if (!ledger || typeof ledger !== "object") {
-    box.textContent = "暂无台账数据。";
-    box.className = "empty";
-    return;
-  }
-  box.className = "ledger-box";
-  const items = Object.entries(ledger)
-    .filter(([, v]) => v != null && typeof v !== "object")
-    .map(([k, v]) => statRow(k, firstText(v), String(v).includes("-") ? "down" : "up"));
-  box.innerHTML = `
-    <div style="font-weight:700">战绩台账</div>
-    <div class="ledger-grid">${items.join("") || "暂无统计字段"}</div>
-  `;
 }
 
 function renderPosters(json) {
   const kinds = Array.isArray(json.posters) ? json.posters.map((p) => p.kind) : [];
-  state.posterKinds = kinds;
   const tabs = el("posterTabs");
   tabs.innerHTML = "";
   if (!kinds.length) {
@@ -113,7 +108,6 @@ function renderPosters(json) {
 }
 
 function showPoster(kind) {
-  state.activePoster = kind;
   document.querySelectorAll(".poster-tab").forEach((b) => {
     b.classList.toggle("active", b.textContent === kind);
   });
