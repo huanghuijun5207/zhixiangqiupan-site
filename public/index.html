@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0d1512" />
+    <meta name="description" content="智享球盘Agent——中国体彩竞彩数据分析展示站。数据每日由本地引擎同步，仅供参考，不构成投注建议。" />
+    <title>智享球盘Agent</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark">⚽</span>
+        <div>
+          <div class="brand-name">智享球盘Agent</div>
+          <div class="brand-sub" id="syncInfo">正在加载数据…</div>
+        </div>
+      </div>
+      <nav class="tabs">
+        <button class="tab active" data-tab="today">今日推荐</button>
+        <button class="tab" data-tab="posters">海报图</button>
+        <button class="tab" data-tab="ledger">战绩台账</button>
+        <button class="tab" data-tab="chat">问 AI</button>
+      </nav>
+    </header>
+
+    <main>
+      <section id="tab-today" class="panel active">
+        <div id="todayEmpty" class="empty hidden">暂无同步数据，请等待本地引擎推送。</div>
+        <div id="todayList" class="match-list"></div>
+      </section>
+
+      <section id="tab-posters" class="panel">
+        <div id="posterTabs" class="poster-tabs"></div>
+        <div id="posterStage" class="poster-stage">
+          <div class="empty">暂无海报。</div>
+        </div>
+      </section>
+
+      <section id="tab-ledger" class="panel">
+        <div id="ledgerBox" class="empty">暂无台账数据。</div>
+      </section>
+
+      <section id="tab-chat" class="panel">
+        <div class="chat-box">
+          <div id="chatLog" class="chat-log">
+            <div class="msg bot">你好，我是智享球盘Agent。可以问我今天的赛事和方案情况（回答使用站长自己的 MiniMax 接口）。仅供参考，不构成投注建议。</div>
+          </div>
+          <div class="chat-input-row">
+            <input id="chatInput" type="text" placeholder="例如：今天有哪些方案？当前台账状态如何？" maxlength="500" />
+            <button id="chatSend">发送</button>
+          </div>
+          <div class="chat-note">回答由 MiniMax 模型基于每日同步数据生成，可能存在错误，不构成投注建议。</div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      智享球盘Agent · 数据仅供个人研究学习参考，不构成任何投注、投资建议或盈利承诺，请理性对待体育彩票，未满 18 周岁禁止购买。
+    </footer>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
